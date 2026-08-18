@@ -1,4 +1,8 @@
+import { faker } from "@faker-js/faker";
 import db from "#db/client";
+import { createTrack } from "#db/queries/tracks";
+import { createPlaylist } from "#db/queries/playlists";
+import { createPlaylistTrack } from "#db/queries/playlists_tracks";
 
 await db.connect();
 await seed();
@@ -6,41 +10,36 @@ await db.end();
 console.log("🌱 Database seeded.");
 
 async function seed() {
-  // TODO
-}
-import { faker } from "@faker-js/faker";
-import client from "./client.js";
-import { insertplaylists} from "./queries/playlists.js";
-import { inserttracks} from "./queries/tracks.js";
-import { insertplaylist_tracks } from "./queries/playlist_tracks.js";
-
-const seedReservations = async()=>{
-    const playlistIds = []
-    const trackIds = []
-    for(let i = 0; i<30;i++){
-        const playlistname = await insertPlaylist (
-           faker.music.genre () + "Mix"
-           faker.lorem.sentence()
-        )
-          playlistIds.push(playlist.id);
-      } 
-
-       for (let i = 0; i < 30; i++) {
-        const track = await insertTrack(
-            faker.music.songName(),
-             faker.number.int({ min: 120000, max: 300000 }) // duration_ms
-    );
+  const trackIds = [];
+  for (let i = 0; i < 20; i++) {
+    const track = await createTrack({
+      name: faker.music.songName(),
+      duration_ms: faker.number.int({ min: 120000, max: 300000 }),
+    });
     trackIds.push(track.id);
   }
-  for (let i = 0; i < 50; i++) {
-    const playlistTrack = {
-      playlist_id: playlistIds[Math.floor(Math.random() * playlistIds.length)],
-      track_id: trackIds[Math.floor(Math.random() * trackIds.length)],
-    };
-    await insertPlaylistTrack(playlistTrack.playlist_id, playlistTrack.track_id);
-  }
-};
 
-client.connect();
-await seedJukebox();
-client.end();
+  const playlistIds = [];
+  for (let i = 0; i < 10; i++) {
+    const playlist = await createPlaylist({
+      name: faker.music.genre() + " Mix",
+      description: faker.lorem.sentence(),
+    });
+    playlistIds.push(playlist.id);
+  }
+
+  const usedPairs = new Set();
+  let created = 0;
+  while (created < 15) {
+    const playlist_id =
+      playlistIds[Math.floor(Math.random() * playlistIds.length)];
+    const track_id = trackIds[Math.floor(Math.random() * trackIds.length)];
+    const key = `${playlist_id}-${track_id}`;
+
+    if (usedPairs.has(key)) continue;
+    usedPairs.add(key);
+
+    await createPlaylistTrack({ playlist_id, track_id });
+    created++;
+  }
+}
